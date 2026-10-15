@@ -120,28 +120,33 @@ function initMap() {
         maxZoom: 19
     });
 
-    // 3. Capas Base Complementarias (Satelital y OpenStreetMap)
+    const baseArgenmapHibrido = L.tileLayer('https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/mapabase_hibrido@EPSG%3A3857@png/{z}/{x}/{-y}.png', {
+        attribution: '&copy; <a href="https://www.ign.gob.ar" target="_blank">Instituto Geográfico Nacional</a>',
+        minZoom: 3,
+        maxNativeZoom: 18,
+        maxZoom: 19
+    });
+
+    // 3. Capas Base Complementarias (Satelital)
     const baseSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
         maxZoom: 19
     });
 
-    const baseOsm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19
-    });
-
     // Control de Capas Base
+    // Conforme a la Ley 22.963 (Ley de la Carta) y la Decisión Administrativa 797/2022,
+    // se emplean los mapas oficiales del IGN (Argenmap), basados en OpenStreetMap pero
+    // procesados con la toponimia soberana oficial argentina ("Islas Malvinas", "Puerto Argentino").
     const baseMaps = {
-        "Argenmap": baseArgenmap,
-        "Argenmap Gris": baseArgenmapGris,
-        "Argenmap Oscuro": baseArgenmapOscuro,
-        "Argenmap Topográfico": baseArgenmapTopo,
-        "Vista Satelital (Esri Imagery)": baseSat,
-        "OpenStreetMap Estándar": baseOsm
+        "Argenmap (OpenStreetMap Oficial IGN)": baseArgenmap,
+        "Argenmap Híbrido (Satelital IGN)": baseArgenmapHibrido,
+        "Argenmap Gris (IGN)": baseArgenmapGris,
+        "Argenmap Oscuro (IGN)": baseArgenmapOscuro,
+        "Argenmap Topográfico (IGN)": baseArgenmapTopo,
+        "Vista Satelital (Esri Imagery)": baseSat
     };
 
-    // 5. Capa Dinámica Oficial de Catastro AREF (Esri Leaflet)
+    // 4. Capa Dinámica Oficial de Catastro AREF (Esri Leaflet)
     // Renderiza las capas oficiales: Límites, Departamentos, Hidrografía, Macizos, Parcelas, Calles y Medidas
     state.arefDynamicLayer = L.esri.dynamicMapLayer({
         url: AREF_BASE_URL,
