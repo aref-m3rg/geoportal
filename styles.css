@@ -701,6 +701,7 @@ body {
 .parcel-badge.urbano { background-color: #e0f2fe; color: var(--badge-urban); }
 .parcel-badge.rural { background-color: #d1fae5; color: var(--badge-rural); }
 .parcel-badge.ph { background-color: #ede9fe; color: var(--badge-ph); }
+.parcel-badge.macizo { background-color: #fef3c7; color: var(--badge-warning, #d97706); }
 
 .action-buttons-cell {
     display: flex;

@@ -471,21 +471,26 @@ async function handleSearch(event) {
 
 /**
  * Procesa los resultados encontrados, actualiza el estado y dibuja en el mapa
+ * @param {Array} features - Entidades GeoJSON/Esri encontradas
+ * @param {string} layerType - 'URBANO', 'RURAL' o 'MACIZO'
+ * @param {boolean} isFromMapClick - Indica si la selección provino de un clic directo en el mapa
  */
-function processResults(features, layerType) {
+function processResults(features, layerType, isFromMapClick = false) {
+    const isMacizo = layerType === 'MACIZO';
+
     state.currentResults = features.map((f, index) => {
         const attrs = f.attributes;
         const geom = f.geometry;
 
         // Normalización de datos para la grilla
-        const partida = attrs.PARTIDA || attrs.Partida || attrs.PARTIDA_T || '-';
+        const partida = attrs.PARTIDA || attrs.Partida || attrs.PARTIDA_T || (isMacizo ? `MZO ${attrs.MACIZO || ''}` : '-');
         const depto = attrs.DEPARTAMEN || attrs.DTO || '-';
         const sec = attrs.SEC || attrs.SECCION || '-';
         const mzo = attrs.MZO || attrs.MACIZO || '-';
-        const par = attrs.PAR || attrs.PARCELA || '-';
-        const dir = attrs.DIRECCION || attrs.ADR || 'Sin dirección asignada';
+        const par = isMacizo ? '-' : (attrs.PAR || attrs.PARCELA || '-');
+        const dir = attrs.DIRECCION || attrs.ADR || (isMacizo ? `Macizo ${mzo} (Sección ${sec})` : 'Sin dirección asignada');
         const sup = attrs.SUPERFICIE || attrs.Superficie || (attrs['Shape.STArea()'] ? Math.round(attrs['Shape.STArea()'] * 100) / 100 : '-');
-        const titular = attrs.TITULAR || attrs.Propietari || attrs.Adjudicatario || 'No especificado';
+        const titular = attrs.TITULAR || attrs.Propietari || attrs.Adjudicatario || (isMacizo ? 'Macizo Catastral' : 'No especificado');
 
         return {
             id: index,
@@ -497,7 +502,7 @@ function processResults(features, layerType) {
             sec: sec,
             mzo: mzo,
             par: par,
-            nomenclatura: `${depto} &bull; Sec: ${sec} &bull; Mzo: ${mzo} &bull; Par: ${par}`,
+            nomenclatura: isMacizo ? `${depto} &bull; Sec: ${sec} &bull; Mzo: ${mzo}` : `${depto} &bull; Sec: ${sec} &bull; Mzo: ${mzo} &bull; Par: ${par}`,
             direccion: dir,
             superficie: sup,
             titular: titular
@@ -507,12 +512,12 @@ function processResults(features, layerType) {
     // Renderizar grilla de resultados
     renderResultsTable(state.currentResults);
 
-    // Dibujar todos los polígonos en el mapa
-    drawFeaturesOnMap(state.currentResults);
+    // Dibujar polígonos en el mapa (no forzar fitBounds si proviene de un clic en el mapa)
+    drawFeaturesOnMap(state.currentResults, !isFromMapClick);
 
-    // Si hay un solo resultado, seleccionarlo y ubicarlo automáticamente
+    // Si hay un solo resultado, seleccionarlo (sin cambiar el zoom si el usuario ya está haciendo clic ahí)
     if (state.currentResults.length === 1) {
-        selectAndLocateParcel(0);
+        selectAndLocateParcel(0, !isFromMapClick);
     }
 }
 
@@ -528,8 +533,10 @@ function esriRingsToLatLngs(rings) {
 
 /**
  * Dibuja los polígonos encontrados en el mapa Leaflet
+ * @param {Array} items - Elementos procesados
+ * @param {boolean} shouldFitBounds - Si es true, ajusta el zoom del mapa a la geometría
  */
-function drawFeaturesOnMap(items) {
+function drawFeaturesOnMap(items, shouldFitBounds = true) {
     state.highlightLayerGroup.clearLayers();
     const bounds = L.latLngBounds();
 
@@ -538,6 +545,7 @@ function drawFeaturesOnMap(items) {
 
         const latLngs = esriRingsToLatLngs(item.geometry.rings);
         const isRural = item.layerType === 'RURAL';
+        const isMacizo = item.layerType === 'MACIZO';
 
         // Estilo del polígono
         const polygon = L.polygon(latLngs, {
@@ -549,13 +557,23 @@ function drawFeaturesOnMap(items) {
         });
 
         // Contenido del Popup al hacer clic en el mapa
+        const title = isMacizo 
+            ? `Macizo ${item.mzo} (Sección ${item.sec})` 
+            : `Partida: ${item.partida}`;
+        const nomenclatura = isMacizo
+            ? `Sección ${item.sec} &bull; Macizo ${item.mzo}`
+            : `Sec ${item.sec} - Mzo ${item.mzo} - Par ${item.par}`;
+        const supFormatted = typeof item.superficie === 'number' 
+            ? item.superficie.toLocaleString('es-AR') + ' m²' 
+            : item.superficie;
+
         const popupContent = `
             <div style="font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.4;">
-                <strong style="color: #0284c7; font-size: 14px;">Partida: ${item.partida}</strong><br>
-                <span><strong>Nomenclatura:</strong> Sec ${item.sec} - Mzo ${item.mzo} - Par ${item.par}</span><br>
+                <strong style="color: #0284c7; font-size: 14px;">${title}</strong><br>
+                <span><strong>Nomenclatura:</strong> ${nomenclatura}</span><br>
                 <span><strong>Departamento:</strong> ${item.depto}</span><br>
-                <span><strong>Superficie:</strong> ${typeof item.superficie === 'number' ? item.superficie.toLocaleString('es-AR') + ' m²' : item.superficie}</span><br>
-                <span><strong>Titular:</strong> ${item.titular}</span><br>
+                <span><strong>Superficie:</strong> ${supFormatted}</span><br>
+                ${!isMacizo ? `<span><strong>Titular:</strong> ${item.titular}</span><br>` : ''}
                 <div style="margin-top: 8px;">
                     <button onclick="window.openFichaModal(${index})" style="background: #0284c7; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600;">
                         Ver Ficha Completa
@@ -577,16 +595,18 @@ function drawFeaturesOnMap(items) {
         });
     });
 
-    // Ajustar la vista del mapa a los polígonos
-    if (bounds.isValid()) {
+    // Ajustar la vista del mapa a los polígonos solo cuando sea una búsqueda explícita
+    if (shouldFitBounds && bounds.isValid()) {
         state.map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18, animate: true });
     }
 }
 
 /**
- * Resalta y enfoca una parcela específica en el mapa
+ * Resalta y enfoca una parcela o macizo específico en el mapa
+ * @param {number} index - Índice en state.currentResults
+ * @param {boolean} shouldFitBounds - Si es true, enfoca la cámara del mapa
  */
-function selectAndLocateParcel(index) {
+function selectAndLocateParcel(index, shouldFitBounds = true) {
     const item = state.currentResults[index];
     if (!item) return;
 
@@ -599,13 +619,18 @@ function selectAndLocateParcel(index) {
         latLngs.forEach(ring => ring.forEach(pt => bounds.extend(pt)));
 
         if (bounds.isValid()) {
-            state.map.fitBounds(bounds, { padding: [80, 80], maxZoom: 18, animate: true });
+            if (shouldFitBounds) {
+                state.map.fitBounds(bounds, { padding: [80, 80], maxZoom: 18, animate: true });
+            }
 
             // Abrir popup sobre el centro
             const center = bounds.getCenter();
+            const isMacizo = item.layerType === 'MACIZO';
+            const popupTitle = isMacizo ? `Macizo ${item.mzo} (Sección ${item.sec})` : `Partida Inmobiliaria ${item.partida}`;
+
             state.map.openPopup(`
                 <div style="font-family: 'Inter', sans-serif; font-size: 13px;">
-                    <strong style="color: #0284c7;">Partida Inmobiliaria ${item.partida}</strong><br>
+                    <strong style="color: #0284c7;">${popupTitle}</strong><br>
                     <span>${item.nomenclatura}</span><br>
                     <button onclick="window.openFichaModal(${index})" style="margin-top: 6px; background: #0284c7; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">
                         Ver Ficha
@@ -842,7 +867,9 @@ function renderResultsTable(items) {
             ? item.superficie.toLocaleString('es-AR')
             : item.superficie;
 
-        const badgeClass = item.layerType === 'RURAL' ? 'rural' : (item.rawAttributes.TIPO === 'PH' ? 'ph' : 'urbano');
+        const isPH = item.rawAttributes && item.rawAttributes.TIPO === 'PH';
+        const badgeClass = item.layerType === 'RURAL' ? 'rural' : (item.layerType === 'MACIZO' ? 'macizo' : (isPH ? 'ph' : 'urbano'));
+        const badgeText = item.layerType === 'MACIZO' ? 'MACIZO' : (isPH ? 'PH' : item.layerType);
 
         row.innerHTML = `
             <td><strong>${item.partida}</strong></td>
@@ -850,7 +877,7 @@ function renderResultsTable(items) {
                 <div>Sec: ${item.sec} &bull; Mzo: ${item.mzo}</div>
                 <div style="color: var(--text-muted); font-size: 0.75rem;">Par: ${item.par}</div>
             </td>
-            <td><span class="parcel-badge ${badgeClass}">${item.layerType}</span></td>
+            <td><span class="parcel-badge ${badgeClass}">${badgeText}</span></td>
             <td style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.direccion}">
                 ${item.direccion}
             </td>
@@ -1104,36 +1131,104 @@ async function loadAfectaciones(item) {
 }
 
 /**
- * Identifica la parcela más cercana o en el punto clicado
+ * Identifica la entidad geográfica sobre la que se hizo clic según el nivel de zoom:
+ * - A nivel de Macizos (zoom < 15): Consulta la Capa 4 (Macizos) con punto exacto (esriGeometryPoint)
+ *   y resalta ÚNICAMENTE el macizo clicado.
+ * - A nivel de Parcelas (zoom >= 15): Consulta la Capa 7 (Parcelario Urbano) con punto exacto
+ *   y resalta ÚNICAMENTE la parcela clicada (o sus unidades funcionales PH).
  */
 async function identifyParcelAtPoint(latlng) {
-    // Si se hizo clic cerca de una parcela, buscamos si hay una entidad
     const point = latlng;
-    if (!point) return;
+    if (!point || !state.map) return;
 
-    // Convertir punto a formato de consulta spatial de ArcGIS
-    const tolerance = 0.0005; // ~50 metros
-    const geomStr = `${point.lng - tolerance},${point.lat - tolerance},${point.lng + tolerance},${point.lat + tolerance}`;
-    
-    const queryUrl = `${AREF_BASE_URL}/${LAYERS.PARCELAS_URBANAS}/query`;
-    const params = new URLSearchParams({
-        geometry: geomStr,
-        geometryType: 'esriGeometryEnvelope',
+    const currentZoom = state.map.getZoom();
+    // Umbral de escala oficial AREF:
+    // Capa 7 (Parcelario Urbano) tiene minScale 20.000 (equivalente a zoom >= 15 en Leaflet).
+    // A zooms menores (zoom < 15), la cartografía oficial dibuja Macizos (Capa 4, minScale 100.000).
+    const isMacizoZoom = currentZoom < 15;
+
+    console.log(`[Geoportal Clic] Zoom: ${currentZoom} | Modo: ${isMacizoZoom ? 'MACIZOS (Capa 4)' : 'PARCELAS (Capa 7)'} | Coords: [${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}]`);
+
+    // Usar consulta puntual exacta (esriGeometryPoint) para seleccionar solo el polígono que contiene al punto
+    // y no generar una envolvente con tolerancia que cruce calles e intersecte macizos o parcelas vecinas.
+    const pointGeom = `${point.lng},${point.lat}`;
+    const baseQueryParams = {
+        geometry: pointGeom,
+        geometryType: 'esriGeometryPoint',
         spatialRel: 'esriSpatialRelIntersects',
         inSR: '4326',
         outFields: '*',
         outSR: '4326',
         returnGeometry: 'true',
         f: 'json'
-    });
+    };
 
     try {
-        const res = await fetch(`${queryUrl}?${params.toString()}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.features && data.features.length > 0) {
-            processResults(data.features, 'URBANO');
-            showToast(`Parcela seleccionada por clic en el mapa.`, 'info');
+        if (isMacizoZoom) {
+            // 1. NIVEL MACIZOS (Zoom < 15): Consultar Capa 4 (Macizos)
+            const queryUrl = `${AREF_BASE_URL}/${LAYERS.MACIZOS}/query`;
+            const res = await fetch(`${queryUrl}?${new URLSearchParams(baseQueryParams).toString()}`);
+            if (res.ok) {
+                const data = await res.json();
+                console.log(`[Geoportal Clic] Respuesta Capa 4 (Macizos): ${data.features ? data.features.length : 0} entidad(es) encontrada(s).`);
+                if (data.features && data.features.length > 0) {
+                    processResults([data.features[0]], 'MACIZO', true);
+                    const mzo = data.features[0].attributes.MACIZO || '';
+                    const sec = data.features[0].attributes.SECCION || '';
+                    showToast(`Macizo ${mzo} (Sección ${sec}) seleccionado.`, 'info');
+                    return;
+                }
+            }
+
+            // Fallback rural si el clic ocurrió fuera del ejido urbano
+            const ruralUrl = `${AREF_BASE_URL}/${LAYERS.PARCELAS_RURALES}/query`;
+            const resRural = await fetch(`${ruralUrl}?${new URLSearchParams(baseQueryParams).toString()}`);
+            if (resRural.ok) {
+                const dataRural = await resRural.json();
+                if (dataRural.features && dataRural.features.length > 0) {
+                    processResults([dataRural.features[0]], 'RURAL', true);
+                    showToast('Parcela rural seleccionada por clic.', 'info');
+                    return;
+                }
+            }
+        } else {
+            // 2. NIVEL PARCELAS (Zoom >= 15): Consultar Capa 7 (Parcelario Urbano)
+            const queryUrl = `${AREF_BASE_URL}/${LAYERS.PARCELAS_URBANAS}/query`;
+            const res = await fetch(`${queryUrl}?${new URLSearchParams(baseQueryParams).toString()}`);
+            if (res.ok) {
+                const data = await res.json();
+                console.log(`[Geoportal Clic] Respuesta Capa 7 (Parcelas): ${data.features ? data.features.length : 0} entidad(es) encontrada(s).`);
+                if (data.features && data.features.length > 0) {
+                    processResults(data.features, 'URBANO', true);
+                    showToast('Parcela urbana seleccionada por clic en el mapa.', 'info');
+                    return;
+                }
+            }
+
+            // Fallback si se hace clic en una parcela rural a nivel detallado
+            const ruralUrl = `${AREF_BASE_URL}/${LAYERS.PARCELAS_RURALES}/query`;
+            const resRural = await fetch(`${ruralUrl}?${new URLSearchParams(baseQueryParams).toString()}`);
+            if (resRural.ok) {
+                const dataRural = await resRural.json();
+                if (dataRural.features && dataRural.features.length > 0) {
+                    processResults([dataRural.features[0]], 'RURAL', true);
+                    showToast('Parcela rural seleccionada por clic.', 'info');
+                    return;
+                }
+            }
+
+            // Fallback a macizo si en ese punto no hay parcela loteada registrada
+            const macizoUrl = `${AREF_BASE_URL}/${LAYERS.MACIZOS}/query`;
+            const resMacizo = await fetch(`${macizoUrl}?${new URLSearchParams(baseQueryParams).toString()}`);
+            if (resMacizo.ok) {
+                const dataMacizo = await resMacizo.json();
+                if (dataMacizo.features && dataMacizo.features.length > 0) {
+                    processResults([dataMacizo.features[0]], 'MACIZO', true);
+                    const mzo = dataMacizo.features[0].attributes.MACIZO || '';
+                    showToast(`Macizo ${mzo} seleccionado.`, 'info');
+                    return;
+                }
+            }
         }
     } catch (e) {
         // Ignorar errores de clic libre
