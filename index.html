@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geoportal Tierra del Fuego | Catastro AREF</title>
+    <meta name="description" content="Geoportal territorial y cartográfico oficial de la Dirección General de Catastro - AREF Tierra del Fuego. Consulta de parcelas urbanas y rurales en WKID 5344.">
+
+    <!-- Tipografía Inter de Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Leaflet CSS (v1.9.4) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+    <!-- Estilos del Geoportal -->
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="image/icono_aref.png">
+</head>
+<body>
+
+    <!-- Encabezado Principal y Barra Institucional -->
+    <header class="app-header">
+        <div class="header-branding">
+            <div class="logo-container">
+                <img src="image/icono_aref.png" alt="Logo Catastro AREF" class="logo-img">
+            </div>
+            <div>
+                <h1 class="header-title">Geoportal Tierra del Fuego</h1>
+                <p class="header-subtitle">Dirección General de Catastro &bull; AREF</p>
+            </div>
+        </div>
+
+        <!-- Acceso Directo de Opacidad y Herramientas del Mapa en el Encabezado -->
+        <div class="header-tools">
+            <div class="toolbar-group">
+                <button id="btn-extent-provincial" class="map-btn" title="Restablecer Vista Provincial de Tierra del Fuego">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
+                    </svg>
+                    <span>Vista Provincial</span>
+                </button>
+                <button id="btn-zoom-selected" class="map-btn hidden" title="Enfocar parcela seleccionada">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="22" y1="12" x2="18" y2="12"></line>
+                        <line x1="6" y1="12" x2="2" y2="12"></line>
+                        <line x1="12" y1="6" x2="12" y2="2"></line>
+                        <line x1="12" y1="22" x2="12" y2="18"></line>
+                    </svg>
+                    <span>Enfocar Parcela</span>
+                </button>
+            </div>
+
+            <div class="toolbar-divider"></div>
+
+            <div class="toolbar-group">
+                <label class="layer-toggle-label" title="Activar/Desactivar cartografía oficial AREF">
+                    <input type="checkbox" id="chk-aref-layer" checked>
+                    <span>Geoservicio AREF</span>
+                </label>
+                <div class="opacity-control" title="Ajustar transparencia de capas AREF">
+                    <span>Opacidad:</span>
+                    <input type="range" id="range-aref-opacity" min="10" max="100" value="90">
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenedor Principal: Vista Dividida (Panel de Resultados + Visor GIS) -->
+    <main class="main-content">
+
+        <!-- Solapita Flotante para reabrir el Panel de Resultados cuando está colapsado -->
+        <button type="button" id="btn-reopen-sidebar" class="sidebar-tab-trigger hidden" title="Mostrar resultados (Clic izquierdo para abrir | Arrastrar con botón derecho para mover verticalmente)" aria-label="Mostrar resultados">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="3" y1="9" x2="21" y2="9"></line>
+                <line x1="9" y1="21" x2="9" y2="9"></line>
+            </svg>
+            <span id="tab-results-badge" class="tab-badge" title="Cantidad de resultados">0</span>
+            <svg class="tab-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+        </button>
+
+        <!-- Panel Lateral / Grilla de Resultados -->
+        <aside class="results-sidebar" id="results-sidebar">
+            <div class="sidebar-header">
+                <div>
+                    <h2 class="sidebar-title">Resultados de Consulta</h2>
+                    <span id="results-count" class="results-count">Sin búsqueda activa</span>
+                </div>
+                <button id="btn-toggle-sidebar" class="btn-icon-only" title="Ocultar panel de resultados" aria-label="Ocultar panel">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Indicador de carga -->
+            <div id="loader" class="loader-container hidden">
+                <div class="spinner"></div>
+                <p id="loader-text">Consultando geoservicios de Catastro AREF...</p>
+            </div>
+
+            <!-- Mensaje de estado inicial / vacío -->
+            <div id="empty-state" class="empty-state">
+                <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <h3>Comienza una búsqueda</h3>
+                <p>Ingresa una partida inmobiliaria o los datos de nomenclatura (Depto, Sección, Macizo, Parcela) para consultar la cartografía oficial.</p>
+            </div>
+
+            <!-- Tabla de Resultados -->
+            <div id="results-table-container" class="table-container hidden">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Partida</th>
+                            <th>Nomenclatura</th>
+                            <th>Tipo</th>
+                            <th>Dirección / Localidad</th>
+                            <th>Sup. (m²)</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-table-body">
+                        <!-- Filas inyectadas dinámicamente con JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </aside>
+
+        <!-- Visor GIS Interactivo basado en Leaflet -->
+        <section class="map-section">
+
+            <!-- Ventana Flotante del Buscador Paramétrico (Colapsable a una sola línea) -->
+            <div id="search-floating-window" class="search-floating-window">
+                <!-- Barra de Encabezado / Resumen en Una Sola Línea (siempre visible o al colapsar) -->
+                <div id="search-bar-header" class="search-bar-header" title="Haz clic para expandir o colapsar el buscador">
+                    <div class="search-bar-summary">
+                        <div class="search-icon-badge">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </div>
+                        <span class="search-summary-title">Búsqueda:</span>
+                        <div id="search-summary-content" class="search-summary-content">
+                            <span class="summary-placeholder">Sin filtros activos &bull; Haz clic para buscar</span>
+                        </div>
+                    </div>
+
+                    <div class="search-bar-actions">
+                        <button type="button" id="btn-toggle-search" class="btn-toggle-search" title="Expandir / Colapsar buscador" aria-label="Alternar panel de búsqueda">
+                            <svg id="icon-toggle-search" class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Cuerpo Desplegable del Buscador -->
+                <div id="search-floating-body" class="search-floating-body">
+                    <form id="search-form" class="search-form">
+                        <div class="form-grid">
+                            <!-- Partida Inmobiliaria -->
+                            <div class="form-group">
+                                <label for="input-partida">Partida Inmob.</label>
+                                <input type="text" id="input-partida" placeholder="Ej: 20856" autocomplete="off">
+                            </div>
+
+                            <!-- Departamento -->
+                            <div class="form-group">
+                                <label for="select-departamento">Departamento</label>
+                                <select id="select-departamento">
+                                    <option value="">Todos</option>
+                                    <option value="1">1 - Ushuaia</option>
+                                    <option value="2">2 - Río Grande</option>
+                                    <option value="3">3 - Tolhuin</option>
+                                    <option value="4">4 - Antártida</option>
+                                    <option value="5">5 - Islas Atlántico</option>
+                                </select>
+                            </div>
+
+                            <!-- Sección -->
+                            <div class="form-group">
+                                <label for="input-seccion">Sección</label>
+                                <input type="text" id="input-seccion" placeholder="Ej: J, L" maxlength="4" autocomplete="off">
+                            </div>
+
+                            <!-- Macizo -->
+                            <div class="form-group">
+                                <label for="input-macizo">Macizo</label>
+                                <input type="text" id="input-macizo" placeholder="Ej: 2 o 12" autocomplete="off">
+                            </div>
+
+                            <!-- Parcela -->
+                            <div class="form-group">
+                                <label for="input-parcela">Parcela</label>
+                                <input type="text" id="input-parcela" placeholder="Ej: 25 o 9" autocomplete="off">
+                            </div>
+
+                            <!-- Botones de Acción -->
+                            <div class="form-actions">
+                                <button type="submit" id="btn-search" class="btn btn-primary btn-sm">
+                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    </svg>
+                                    Buscar
+                                </button>
+                                <button type="button" id="btn-clear" class="btn btn-secondary btn-sm" title="Limpiar formulario">
+                                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>
+                                    </svg>
+                                    Limpiar
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Accesos rápidos / Ejemplos de prueba guiada -->
+                        <div class="quick-examples">
+                            <span class="quick-label">Prueba rápida:</span>
+                            <button type="button" class="chip" data-partida="20856" data-depto="2" data-sec="J" data-mzo="2" data-par="25">
+                                Río Grande: Partida 20856
+                            </button>
+                            <button type="button" class="chip" data-partida="3635" data-depto="1" data-sec="L" data-mzo="12" data-par="9">
+                                Ushuaia: Partida 3635
+                            </button>
+                            <button type="button" class="chip" data-partida="127249" data-depto="3" data-sec="T" data-mzo="265" data-par="15">
+                                Tolhuin: Partida 127249
+                            </button>
+                            <button type="button" class="chip" data-partida="58935" data-depto="2" data-sec="R" data-mzo="" data-par="87GB">
+                                Rural: Partida 58935
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Contenedor del Mapa Leaflet -->
+            <div id="map" class="map-container" tabindex="0"></div>
+
+            <!-- Barra Inferior de Coordenadas e Información Geodésica en Tiempo Real -->
+            <footer class="map-statusbar">
+                <div class="status-item">
+                    <span class="status-label">Geográficas (WGS84):</span>
+                    <span id="coord-wgs84" class="status-value">Lat: -54.0000° | Lng: -67.8000°</span>
+                </div>
+                <div class="status-item highlight">
+                    <span class="status-label">Oficial POSGAR 07 Faja 2 (WKID 5344):</span>
+                    <span id="coord-posgar" class="status-value">X: 2.583.256 m | Y: 4.041.085 m</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Nivel de Zoom:</span>
+                    <span id="map-zoom" class="status-value">8</span>
+                </div>
+            </footer>
+        </section>
+    </main>
+
+    <!-- Ficha Parcelaria Exhaustiva (Ventana Modal) -->
+    <div id="modal-ficha" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-container">
+            <!-- Encabezado de la Ficha -->
+            <header class="modal-header">
+                <div>
+                    <span class="modal-badge">Dirección General de Catastro &bull; Provincia de Tierra del Fuego</span>
+                    <h2 id="modal-title" class="modal-title">Ficha Parcelaria Oficial</h2>
+                    <p id="modal-subtitle" class="modal-subtitle">Nomenclatura Catastral y Datos Dominiales</p>
+                </div>
+                <div class="modal-header-actions">
+                    <button type="button" id="btn-print-ficha" class="btn btn-secondary btn-sm" title="Imprimir ficha oficial">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                            <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"></path>
+                            <rect x="6" y="14" width="12" height="8"></rect>
+                        </svg>
+                        Imprimir Ficha
+                    </button>
+                    <button type="button" id="btn-close-modal" class="btn-close" aria-label="Cerrar modal">&times;</button>
+                </div>
+            </header>
+
+            <!-- Cuerpo Desglosado de la Ficha -->
+            <div class="modal-body">
+                <!-- 1. Identificación y Ubicación Catastral -->
+                <section class="ficha-card">
+                    <h3 class="ficha-card-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="3" y1="9" x2="21" y2="9"></line>
+                            <line x1="9" y1="21" x2="9" y2="9"></line>
+                        </svg>
+                        1. Nomenclatura e Identificación Territorial
+                    </h3>
+                    <div class="ficha-grid">
+                        <div class="ficha-item">
+                            <span class="ficha-label">Partida Inmobiliaria</span>
+                            <span id="f-partida" class="ficha-value highlight-num">-</span>
+                        </div>
+                        <div class="ficha-item">
+                            <span class="ficha-label">Departamento</span>
+                            <span id="f-departamento" class="ficha-value">-</span>
+                        </div>
+                        <div class="ficha-item">
+                            <span class="ficha-label">Sección</span>
+                            <span id="f-seccion" class="ficha-value">-</span>
+                        </div>
+                        <div class="ficha-item">
+                            <span class="ficha-label">Macizo / Manzana</span>
+                            <span id="f-macizo" class="ficha-value">-</span>
+                        </div>
+                        <div class="ficha-item">
+                            <span class="ficha-label">Parcela</span>
+                            <span id="f-parcela" class="ficha-value">-</span>
+                        </div>
+                        <div class="ficha-item">
+                            <span class="ficha-label">Unidad Funcional (UF)</span>
+                            <span id="f-uf" class="ficha-value">-</span>
+                        </div>
+                        <div class="ficha-item">
+                            <span class="ficha-label">Chacra / Quinta / Fracción</span>
+                            <span id="f-complementarios" class="ficha-value">-</span>
+                        </div>
+                        <div class="ficha-item">
+                            <span class="ficha-label">Tipo de Inmueble</span>
+                            <span id="f-tipo" class="ficha-value">-</span>
+                        </div>
+                        <div class="ficha-item col-span-2">
+                            <span class="ficha-label">Domicilio / Ubicación Registrada</span>
+                            <span id="f-direccion" class="ficha-value">-</span>
+                        </div>
+                        <div class="ficha-item">
+                            <span class="ficha-label">Plano de Mensura</span>
+                            <span id="f-plano" class="ficha-value">-</span>
+                        </div>
+                        <div class="ficha-item">
+                            <span class="ficha-label">Estado Catastral / Sub-par</span>
+                            <span id="f-estado" class="ficha-value">-</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. Titulares y Dominio -->
+                <section class="ficha-card">
+                    <h3 class="ficha-card-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        2. Titulares y Régimen de Dominio
+                    </h3>
+                    <div class="ficha-grid">
+                        <div class="ficha-item col-span-2">
+                            <span class="ficha-label">Titular Registrado / Propietario</span>
+                            <span id="f-titular" class="ficha-value font-bold">-</span>
+                        </div>
+                        <div class="ficha-item">
+                            <span class="ficha-label">Clasificación de Titular</span>
+                            <span id="f-clas-titular" class="ficha-value">-</span>
+                        </div>
+                        <div class="ficha-item">
+                            <span class="ficha-label">Entidad Asociada</span>
+                            <span id="f-entidad" class="ficha-value">-</span>
+                        </div>
+                        <div class="ficha-item">
+                            <span class="ficha-label">Uso del Suelo</span>
+                            <span id="f-usos" class="ficha-value">-</span>
+                        </div>
+                        <div class="ficha-item">
+                            <span class="ficha-label">Organismo Actuante</span>
+                            <span id="f-organismo" class="ficha-value">Dirección General de Catastro - AREF</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 3. Valuaciones Fiscales Oficiales -->
+                <section class="ficha-card">
+                    <h3 class="ficha-card-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M12 6v12M17 10a5 5 0 00-10 0c0 5 10 3 10 8a5 5 0 01-10 0"></path>
+                        </svg>
+                        3. Superficies y Valuación Fiscal
+                    </h3>
+                    <div class="ficha-grid valuation-grid">
+                        <div class="ficha-item">
+                            <span class="ficha-label">Superficie Territorial Registrada</span>
+                            <span id="f-superficie" class="ficha-value font-bold">-</span>
+                        </div>
+                        <div class="ficha-item">
+                            <span class="ficha-label">Valuación Fiscal Tierra</span>
+                            <span id="f-val-tierra" class="ficha-value text-currency">-</span>
+                        </div>
+                        <div class="ficha-item">
+                            <span class="ficha-label">Valuación Fiscal Mejoras</span>
+                            <span id="f-val-mejoras" class="ficha-value text-currency">-</span>
+                        </div>
+                        <div class="ficha-item highlight-box">
+                            <span class="ficha-label">Valuación Fiscal Total</span>
+                            <span id="f-val-total" class="ficha-value text-currency-total">-</span>
+                        </div>
+                        <div class="ficha-item col-span-2">
+                            <span class="ficha-label">Vigencia Fiscal (VSEP) / Observaciones de Avalúo</span>
+                            <span id="f-fecha-vsep" class="ficha-value">-</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 4. Medidas y Linderos -->
+                <section class="ficha-card">
+                    <h3 class="ficha-card-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"></path>
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                        </svg>
+                        4. Medidas Perimetrales, Linderos y Georreferenciación
+                    </h3>
+                    <div class="linderos-container">
+                        <div class="linderos-grid">
+                            <div class="lindero-card">
+                                <span class="lindero-side">Frente / Norte</span>
+                                <span id="f-lindero-norte" class="lindero-val">-</span>
+                            </div>
+                            <div class="lindero-card">
+                                <span class="lindero-side">Fondo / Sur</span>
+                                <span id="f-lindero-sur" class="lindero-val">-</span>
+                            </div>
+                            <div class="lindero-card">
+                                <span class="lindero-side">Lateral Este</span>
+                                <span id="f-lindero-este" class="lindero-val">-</span>
+                            </div>
+                            <div class="lindero-card">
+                                <span class="lindero-side">Lateral Oeste</span>
+                                <span id="f-lindero-oeste" class="lindero-val">-</span>
+                            </div>
+                        </div>
+                        <div class="perimetro-box">
+                            <span class="ficha-label">Perímetro Total:</span>
+                            <span id="f-perimetro" class="perimetro-val">-</span>
+                        </div>
+                        <div class="posgar-coords-box">
+                            <span class="ficha-label">Centroide Georreferenciado Oficial (POSGAR 07 Faja 2 / WKID 5344):</span>
+                            <span id="f-centroide-posgar" class="posgar-val">-</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 5. Afectaciones y Restricciones al Dominio -->
+                <section class="ficha-card">
+                    <h3 class="ficha-card-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        5. Afectaciones y Restricciones al Dominio
+                    </h3>
+                    <div id="afectaciones-container">
+                        <p id="f-afectaciones-status" class="afectaciones-clean">Consultando afectaciones en Capa 2 (Restricciones)...</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Pie del Modal -->
+            <footer class="modal-footer">
+                <button type="button" id="btn-modal-locate" class="btn btn-primary">
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    Ubicar en el Mapa
+                </button>
+                <button type="button" id="btn-modal-close" class="btn btn-secondary">Cerrar</button>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Contenedor de Alertas Flotantes (Toasts) -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <!-- Librerías Externas vía CDN -->
+    <!-- 1. Leaflet JS (v1.9.4) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- 2. Esri Leaflet (v3.0.12) para consumo de Geoservicios REST de ArcGIS Server -->
+    <script src="https://unpkg.com/esri-leaflet@3.0.12/dist/esri-leaflet.js"></script>
+
+    <!-- 3. Proj4js (v2.9.0) para conversiones precisas de coordenadas al sistema WKID 5344 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+
+    <!-- 4. Lógica de la Aplicación -->
+    <script src="app.js"></script>
+</body>
+</html>
