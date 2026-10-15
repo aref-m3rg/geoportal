@@ -18,21 +18,45 @@
 const AREF_BASE_URL = 'https://catastro.aref.gob.ar/arcgis/rest/services/PRUEBAS/Plancheta_actual/MapServer';
 
 /**
- * Identificadores de las capas (Layers) oficiales del MapServer
+ * Catálogo exhaustivo de las 19 Capas Oficiales del MapServer de Catastro AREF
+ * (Plancheta_actual MapServer / Layers 0 a 18)
  */
-const LAYERS = {
-    PUERTAS: 0,
-    RESTRICCIONES: 2,       // Capa de Afectaciones y Servidumbres
-    MEDIDAS: 3,             // Capa de Cotas y Linderos
-    MACIZOS: 4,             // Capa Vectorial de Macizos y Manzanas
-    SECCIONES: 5,           // Límites de Sección
-    PARCELAS_URBANAS: 7,    // Capa Vectorial de Parcelario Urbano
-    PARCELAS_RURALES: 8,    // Capa Vectorial de Parcelario Rural
-    CALLES: 9,              // Trazas y nombres de calles
-    LIMITES: 15,            // Límites base oficiales (DBO.LIMITES)
-    HIDROGRAFIA: 16,        // Ríos, lagos y costas
-    DEPARTAMENTOS: 17       // División departamental según Ley 2017
-};
+const AREF_LAYERS_CATALOG = [
+    // 1. Catastro y Parcelario
+    { id: 7,  key: 'PARCELAS_URBANAS',      name: 'Parcelario Urbano',                     category: 'Catastro y Parcelario',       scaleDesc: 'MinScale 1:20.000',      defaultActive: true  },
+    { id: 8,  key: 'PARCELAS_RURALES',      name: 'Parcelario Rural',                      category: 'Catastro y Parcelario',       scaleDesc: 'MinScale 1:1.600.000',   defaultActive: true  },
+    { id: 4,  key: 'MACIZOS',               name: 'Macizos y Manzanas',                   category: 'Catastro y Parcelario',       scaleDesc: 'MinScale 1:100.000',     defaultActive: true  },
+    { id: 5,  key: 'SECCIONES',             name: 'Secciones Catastrales',                category: 'Catastro y Parcelario',       scaleDesc: 'MinScale 1:250.000',     defaultActive: true  },
+    { id: 14, key: 'PH_CI',                 name: 'Conjuntos Inmobiliarios / PH',         category: 'Catastro y Parcelario',       scaleDesc: 'MinScale 1:20.000',      defaultActive: false },
+
+    // 2. Información Técnica, Cotas y Mensuras
+    { id: 3,  key: 'MEDIDAS',               name: 'Medidas y Cotas de Linderos',          category: 'Información Técnica y Planos',scaleDesc: 'MinScale 1:5.000',       defaultActive: true  },
+    { id: 0,  key: 'PUERTAS',               name: 'Puertas y Numeración Domiciliaria',    category: 'Información Técnica y Planos',scaleDesc: 'MinScale 1:1.000',       defaultActive: true  },
+    { id: 2,  key: 'RESTRICCIONES',         name: 'Restricciones y Servidumbres',         category: 'Información Técnica y Planos',scaleDesc: 'MinScale 1:500.000',     defaultActive: false },
+    { id: 13, key: 'PLANOS_SV',             name: 'Planos de Mensura (SV)',               category: 'Información Técnica y Planos',scaleDesc: 'MinScale 1:500.000',     defaultActive: false },
+    { id: 12, key: 'VSEP',                  name: 'VSEP (Superficies de Afectación)',     category: 'Información Técnica y Planos',scaleDesc: 'MinScale 1:20.000',      defaultActive: false },
+
+    // 3. Vialidad e Infraestructura
+    { id: 9,  key: 'CALLES',                name: 'Calles y Trazas Urbanas',              category: 'Vialidad e Infraestructura',  scaleDesc: 'MinScale 1:10.000',      defaultActive: true  },
+    { id: 18, key: 'VIA_PUBLICA',           name: 'Vía Pública y Espacios de Dominio',    category: 'Vialidad e Infraestructura',  scaleDesc: 'Visible siempre',        defaultActive: false },
+    { id: 11, key: 'RUTAS_COMPLEMENTARIAS', name: 'Rutas Complementarias',                category: 'Vialidad e Infraestructura',  scaleDesc: '1:50.000 a 1:5.000',     defaultActive: false },
+
+    // 4. Límites, Ambiente y Geodesia
+    { id: 17, key: 'DEPARTAMENTOS',         name: 'Departamentos Provinciales (Ley 1146)',category: 'Límites, Ambiente y Geodesia',scaleDesc: 'Visible siempre',        defaultActive: true  },
+    { id: 15, key: 'LIMITES',               name: 'Límites Jurisdiccionales Oficiales',   category: 'Límites, Ambiente y Geodesia',scaleDesc: 'Visible siempre',        defaultActive: true  },
+    { id: 16, key: 'HIDROGRAFIA',           name: 'Hidrografía (Costas, Ríos y Lagos)',   category: 'Límites, Ambiente y Geodesia',scaleDesc: 'MinScale 1:300.000',     defaultActive: true  },
+    { id: 10, key: 'ESPACIOS_VERDES',       name: 'Espacios Verdes y Plazas',             category: 'Límites, Ambiente y Geodesia',scaleDesc: 'MinScale 1:100.000',     defaultActive: false },
+    { id: 6,  key: 'ESPACIOS_RESERVA',      name: 'Espacios de Reserva',                  category: 'Límites, Ambiente y Geodesia',scaleDesc: 'MinScale 1:500.000',     defaultActive: false },
+    { id: 1,  key: 'RED_GEODESICA',         name: 'Red Geodésica Provincial (TDF95)',     category: 'Límites, Ambiente y Geodesia',scaleDesc: 'Visible siempre',        defaultActive: false }
+];
+
+/**
+ * Mapeo de Identificadores de Capas (Layers) para consultas programáticas
+ */
+const LAYERS = {};
+AREF_LAYERS_CATALOG.forEach(l => {
+    LAYERS[l.key] = l.id;
+});
 
 /**
  * Definición del Sistema Geodésico Oficial de Referencia:
@@ -68,7 +92,8 @@ const state = {
     selectedParcel: null,        // Parcela actualmente seleccionada
     isFallbackActive: false,     // Bandera del mecanismo de fallback rural
     isSearchCollapsed: false,    // Estado de la ventana flotante del buscador
-    isSidebarCollapsed: false    // Estado del panel lateral de resultados
+    isSidebarCollapsed: false,   // Estado del panel lateral de resultados
+    activeArefLayers: AREF_LAYERS_CATALOG.filter(l => l.defaultActive).map(l => l.id) // Capas activas por defecto
 };
 
 // ==============================================================================
@@ -147,28 +172,18 @@ function initMap() {
     };
 
     // 4. Capa Dinámica Oficial de Catastro AREF (Esri Leaflet)
-    // Renderiza las capas oficiales: Límites, Departamentos, Hidrografía, Macizos, Parcelas, Calles y Medidas
+    // Inicializada con las capas activas configuradas en state.activeArefLayers
     state.arefDynamicLayer = L.esri.dynamicMapLayer({
         url: AREF_BASE_URL,
         opacity: 0.9,
         useCors: true,
-        layers: [
-            LAYERS.LIMITES,
-            LAYERS.DEPARTAMENTOS,
-            LAYERS.HIDROGRAFIA,
-            LAYERS.MACIZOS,
-            LAYERS.PARCELAS_URBANAS,
-            LAYERS.PARCELAS_RURALES,
-            LAYERS.CALLES,
-            LAYERS.MEDIDAS,
-            LAYERS.PUERTAS
-        ]
+        layers: state.activeArefLayers
     }).addTo(state.map);
 
-    // Control de Capas ubicado en la esquina inferior izquierda
-    L.control.layers(baseMaps, {
-        "Cartografía Oficial AREF (Catastro)": state.arefDynamicLayer
-    }, { position: 'bottomleft' }).addTo(state.map);
+    // 5. Control de Capas de Leaflet ubicado en la esquina inferior izquierda
+    // Muestra la selección de mapas base y una opción integrada para desplegar el Administrador de Capas
+    const layersControl = L.control.layers(baseMaps, null, { position: 'bottomleft', collapsed: true }).addTo(state.map);
+    setupLeafletLayersControlAction(layersControl);
 
     // 6. Grupo de capas para destacar polígonos buscados
     state.highlightLayerGroup = L.layerGroup().addTo(state.map);
@@ -1317,6 +1332,229 @@ function showToast(message, type = 'info') {
 }
 
 /**
+ * Aplica la actualización de capas visibles al Geoservicio de AREF
+ * y sincroniza el estado de los controles en la interfaz
+ */
+function applyArefLayersUpdate() {
+    if (!state.arefDynamicLayer) return;
+
+    if (state.activeArefLayers.length === 0) {
+        state.arefDynamicLayer.setLayers([-1]);
+    } else {
+        state.arefDynamicLayer.setLayers(state.activeArefLayers);
+    }
+
+    // Actualizar contador en el botón de la barra de herramientas superior
+    const headerCount = document.getElementById('header-active-layers-count');
+    if (headerCount) {
+        headerCount.textContent = state.activeArefLayers.length;
+    }
+
+    // Actualizar texto estadístico en el modal
+    const modalText = document.getElementById('modal-active-layers-text');
+    if (modalText) {
+        modalText.innerHTML = `<strong>${state.activeArefLayers.length}</strong> de ${AREF_LAYERS_CATALOG.length} capas activas`;
+    }
+
+    // Actualizar indicador en el control rápido de Leaflet (esquina inferior izquierda)
+    const leafletCount = document.getElementById('leaflet-active-layers-count');
+    if (leafletCount) {
+        leafletCount.textContent = `${state.activeArefLayers.length}/19`;
+    }
+
+    // Sincronizar checkboxes y tarjetas en el modal
+    AREF_LAYERS_CATALOG.forEach(l => {
+        const chk = document.getElementById(`chk-layer-${l.id}`);
+        const card = document.getElementById(`layer-card-${l.id}`);
+        const isActive = state.activeArefLayers.includes(l.id);
+        if (chk) chk.checked = isActive;
+        if (card) {
+            if (isActive) card.classList.add('active');
+            else card.classList.remove('active');
+        }
+    });
+}
+
+/**
+ * Incorpora en el Control de Capas de Leaflet (esquina inferior izquierda) una opción
+ * directa que permite desplegar el Administrador de Capas Cartográficas AREF
+ * @param {L.Control.Layers} layersControl - Instancia del control de capas Leaflet
+ */
+function setupLeafletLayersControlAction(layersControl) {
+    const container = layersControl.getContainer();
+    if (!container) return;
+
+    const list = container.querySelector('.leaflet-control-layers-list');
+    if (!list) return;
+
+    // Separador visual
+    const separator = document.createElement('div');
+    separator.className = 'leaflet-control-layers-separator';
+    separator.style.display = 'block';
+
+    // Opción para abrir el Administrador de Capas
+    const actionWrapper = document.createElement('div');
+    actionWrapper.className = 'leaflet-aref-action-wrapper';
+    actionWrapper.innerHTML = `
+        <div class="leaflet-aref-action-label">Cartografía Oficial AREF</div>
+        <button type="button" id="btn-leaflet-open-layers" class="leaflet-aref-manage-btn" title="Abrir Administrador de Capas Cartográficas (19 capas)">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                <polyline points="2 17 12 22 22 17"></polyline>
+                <polyline points="2 12 12 17 22 12"></polyline>
+            </svg>
+            <span class="leaflet-aref-btn-text">Capas AREF</span>
+            <span class="leaflet-aref-badge" id="leaflet-active-layers-count">${state.activeArefLayers.length}/19</span>
+        </button>
+    `;
+
+    list.appendChild(separator);
+    list.appendChild(actionWrapper);
+
+    // Evitar que los clics o desplazamientos en la opción se propaguen al mapa
+    L.DomEvent.disableClickPropagation(actionWrapper);
+    L.DomEvent.disableScrollPropagation(actionWrapper);
+
+    const btn = actionWrapper.querySelector('#btn-leaflet-open-layers');
+    if (btn) {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openArefLayersModal();
+        });
+    }
+}
+
+/**
+ * Despliega el modal Administrador de Capas Cartográficas AREF
+ */
+function openArefLayersModal() {
+    const modalLayers = document.getElementById('modal-layers');
+    if (modalLayers) {
+        applyArefLayersUpdate();
+        modalLayers.classList.remove('hidden');
+    }
+}
+
+/**
+ * Cierra el modal Administrador de Capas Cartográficas AREF
+ */
+function closeArefLayersModal() {
+    const modalLayers = document.getElementById('modal-layers');
+    if (modalLayers) {
+        modalLayers.classList.add('hidden');
+    }
+}
+
+/**
+ * Inicializa el Administrador de Capas Catastrales AREF (Modal interactivo)
+ */
+function initArefLayersManager() {
+    const container = document.getElementById('layers-catalog-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    // Agrupar catálogo por categoría
+    const categories = {};
+    AREF_LAYERS_CATALOG.forEach(l => {
+        if (!categories[l.category]) {
+            categories[l.category] = [];
+        }
+        categories[l.category].push(l);
+    });
+
+    const categoryIcons = {
+        'Catastro y Parcelario': '📍',
+        'Información Técnica y Planos': '📏',
+        'Vialidad e Infraestructura': '🛣️',
+        'Límites, Ambiente y Geodesia': '🏔️'
+    };
+
+    Object.keys(categories).forEach(catName => {
+        const catBlock = document.createElement('div');
+        catBlock.className = 'layers-category-block';
+
+        const icon = categoryIcons[catName] || '📂';
+        catBlock.innerHTML = `
+            <div class="layers-category-title">
+                <span>${icon}</span>
+                <span>${catName}</span>
+                <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: normal; margin-left: auto;">${categories[catName].length} capas</span>
+            </div>
+            <div class="layers-category-grid" id="cat-grid-${catName.replace(/[^a-zA-Z0-9]/g, '-')}"></div>
+        `;
+        container.appendChild(catBlock);
+
+        const grid = catBlock.querySelector('.layers-category-grid');
+        categories[catName].forEach(l => {
+            const isActive = state.activeArefLayers.includes(l.id);
+            const card = document.createElement('label');
+            card.className = `layer-toggle-card ${isActive ? 'active' : ''}`;
+            card.id = `layer-card-${l.id}`;
+            card.htmlFor = `chk-layer-${l.id}`;
+
+            card.innerHTML = `
+                <input type="checkbox" id="chk-layer-${l.id}" class="layer-switch-input" ${isActive ? 'checked' : ''}>
+                <div class="layer-card-info">
+                    <span class="layer-card-name" title="${l.name}">${l.name}</span>
+                    <div class="layer-card-meta">
+                        <span class="layer-meta-id">Capa ${l.id}</span>
+                        <span class="layer-meta-scale">${l.scaleDesc}</span>
+                    </div>
+                </div>
+            `;
+
+            const input = card.querySelector('input');
+            input.addEventListener('change', (e) => {
+                const checked = e.target.checked;
+                if (checked) {
+                    if (!state.activeArefLayers.includes(l.id)) {
+                        state.activeArefLayers.push(l.id);
+                    }
+                } else {
+                    state.activeArefLayers = state.activeArefLayers.filter(id => id !== l.id);
+                }
+                applyArefLayersUpdate();
+            });
+
+            grid.appendChild(card);
+        });
+    });
+
+    // Botones de acción rápida en el modal
+    document.getElementById('btn-layers-all').addEventListener('click', () => {
+        state.activeArefLayers = AREF_LAYERS_CATALOG.map(l => l.id);
+        applyArefLayersUpdate();
+        showToast('Todas las 19 capas del geoservicio han sido activadas.', 'info');
+    });
+
+    document.getElementById('btn-layers-none').addEventListener('click', () => {
+        state.activeArefLayers = [];
+        applyArefLayersUpdate();
+        showToast('Todas las capas han sido desactivadas.', 'info');
+    });
+
+    document.getElementById('btn-layers-default').addEventListener('click', () => {
+        state.activeArefLayers = AREF_LAYERS_CATALOG.filter(l => l.defaultActive).map(l => l.id);
+        applyArefLayersUpdate();
+        showToast('Se restablecieron las 10 capas predeterminadas.', 'info');
+    });
+
+    // Control de apertura y cierre del modal
+    document.getElementById('btn-open-layers-modal').addEventListener('click', openArefLayersModal);
+    document.getElementById('btn-close-layers-modal').addEventListener('click', closeArefLayersModal);
+    document.getElementById('btn-layers-modal-done').addEventListener('click', closeArefLayersModal);
+
+    const modalLayers = document.getElementById('modal-layers');
+    if (modalLayers) {
+        modalLayers.addEventListener('click', (e) => {
+            if (e.target === modalLayers) closeArefLayersModal();
+        });
+    }
+}
+
+/**
  * Configura los escuchadores de eventos del DOM
  */
 function setupUIEventListeners() {
@@ -1425,10 +1663,13 @@ function setupUIEventListeners() {
         if (e.target === modal) closeModal();
     });
 
-    // Tecla Escape para cerrar modal
+    // Tecla Escape para cerrar modales
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
-            closeModal();
+        if (e.key === 'Escape') {
+            if (!modal.classList.contains('hidden')) {
+                closeModal();
+            }
+            closeArefLayersModal();
         }
     });
 
@@ -1461,5 +1702,7 @@ window.openFichaModal = function (index) {
 
 document.addEventListener('DOMContentLoaded', () => {
     initMap();
+    initArefLayersManager();
     setupUIEventListeners();
 });
+

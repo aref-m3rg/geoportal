@@ -1390,3 +1390,195 @@ body {
     cursor: pointer;
 }
 
+/* --- Modal Administrador de Capas AREF --- */
+.layers-modal-container {
+    max-width: 760px;
+    max-height: 85vh;
+}
+
+.layers-toolbar-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.5rem;
+    background-color: var(--bg-main);
+    border-bottom: 1px solid var(--border-color);
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.layers-stats-badge {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.layers-stats-badge strong {
+    color: var(--brand-primary);
+    font-weight: 700;
+}
+
+.layers-quick-btns {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.layers-modal-body {
+    padding: 1rem 1.5rem;
+    overflow-y: auto;
+}
+
+.layers-category-block {
+    margin-bottom: 1.25rem;
+}
+
+.layers-category-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-primary);
+    margin-bottom: 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1.5px solid var(--border-color);
+}
+
+.layers-category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 0.6rem;
+}
+
+.layer-toggle-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 0.85rem;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    user-select: none;
+}
+
+.layer-toggle-card:hover {
+    border-color: var(--brand-primary);
+    background-color: #f0f9ff;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.layer-toggle-card.active {
+    border-color: #93c5fd;
+    background-color: #f8fafc;
+}
+
+.layer-switch-input {
+    width: 1.15rem;
+    height: 1.15rem;
+    accent-color: var(--brand-primary);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.layer-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.layer-card-name {
+    font-size: 0.825rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.layer-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.2rem;
+}
+
+.layer-meta-id {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--brand-primary);
+    background-color: #e0f2fe;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+}
+
+.layer-meta-scale {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+}
+
+/* --- Opción en Control Rápido de Leaflet para abrir Administrador de Capas --- */
+.leaflet-aref-action-wrapper {
+    margin-top: 0.5rem;
+    padding-top: 0.35rem;
+}
+
+.leaflet-aref-action-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+}
+
+.leaflet-aref-manage-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--brand-primary);
+    background-color: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    gap: 0.45rem;
+    font-family: inherit;
+    text-align: left;
+}
+
+.leaflet-aref-manage-btn:hover {
+    background-color: #e0f2fe;
+    border-color: var(--brand-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(14, 116, 144, 0.15);
+}
+
+.leaflet-aref-manage-btn svg {
+    flex-shrink: 0;
+    color: var(--brand-primary);
+}
+
+.leaflet-aref-btn-text {
+    flex: 1;
+    white-space: nowrap;
+}
+
+.leaflet-aref-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #0369a1;
+    background-color: #e0f2fe;
+    padding: 0.1rem 0.35rem;
+    border-radius: 9999px;
+    border: 1px solid #7dd3fc;
+}
+
+

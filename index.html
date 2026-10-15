@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 
     <!-- Estilos del Geoportal -->
-    <link rel="stylesheet" href="styles.css?v=4">
+    <link rel="stylesheet" href="styles.css?v=6">
     <link rel="icon" type="image/png" href="image/icono_aref.png">
 </head>
 <body>
@@ -56,9 +56,17 @@
             <div class="toolbar-divider"></div>
 
             <div class="toolbar-group">
-                <label class="layer-toggle-label" title="Activar/Desactivar cartografía oficial AREF">
+                <button type="button" id="btn-open-layers-modal" class="map-btn" title="Administrar y encender/apagar las 19 capas oficiales de Catastro AREF">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                        <polyline points="2 17 12 22 22 17"></polyline>
+                        <polyline points="2 12 12 17 22 12"></polyline>
+                    </svg>
+                    <span>Capas AREF (<span id="header-active-layers-count">10</span>/19)</span>
+                </button>
+                <label class="layer-toggle-label" title="Activar/Desactivar cartografía oficial AREF completa">
                     <input type="checkbox" id="chk-aref-layer" checked>
-                    <span>Geoservicio AREF</span>
+                    <span>Geoservicio</span>
                 </label>
                 <div class="opacity-control" title="Ajustar transparencia de capas AREF">
                     <span>Opacidad:</span>
@@ -482,6 +490,43 @@
         </div>
     </div>
 
+    <!-- Modal Administrador de Capas Catastrales AREF (19 Capas Oficiales) -->
+    <div id="modal-layers" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-layers-title">
+        <div class="modal-container layers-modal-container">
+            <header class="modal-header">
+                <div>
+                    <span class="modal-badge">Geoservicio Oficial AREF &bull; Tierra del Fuego</span>
+                    <h2 id="modal-layers-title" class="modal-title">Administrador de Capas Cartográficas</h2>
+                    <p class="modal-subtitle">Enciende o apaga dinámicamente las 19 capas oficiales del MapServer Plancheta Actual</p>
+                </div>
+                <button type="button" id="btn-close-layers-modal" class="btn-close" aria-label="Cerrar administrador de capas">&times;</button>
+            </header>
+
+            <!-- Acciones Rápidas del Administrador de Capas -->
+            <div class="layers-toolbar-actions">
+                <div class="layers-stats-badge">
+                    <span id="modal-active-layers-text"><strong>10</strong> de 19 capas activas</span>
+                </div>
+                <div class="layers-quick-btns">
+                    <button type="button" id="btn-layers-all" class="btn btn-sm btn-secondary" title="Activar todas las 19 capas">Activar Todas</button>
+                    <button type="button" id="btn-layers-none" class="btn btn-sm btn-secondary" title="Desactivar todas las capas">Desactivar Todas</button>
+                    <button type="button" id="btn-layers-default" class="btn btn-sm btn-primary" title="Restablecer selección predeterminada">Predeterminadas</button>
+                </div>
+            </div>
+
+            <!-- Catálogo de Capas Agrupado por Categorías -->
+            <div class="modal-body layers-modal-body">
+                <div id="layers-catalog-container" class="layers-catalog-container">
+                    <!-- Filas de capas generadas dinámicamente con JavaScript -->
+                </div>
+            </div>
+
+            <footer class="modal-footer">
+                <button type="button" id="btn-layers-modal-done" class="btn btn-primary">Listo</button>
+            </footer>
+        </div>
+    </div>
+
     <!-- Contenedor de Alertas Flotantes (Toasts) -->
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
@@ -496,6 +541,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
 
     <!-- 4. Lógica de la Aplicación -->
-    <script src="app.js?v=4"></script>
+    <script src="app.js?v=7"></script>
 </body>
 </html>
